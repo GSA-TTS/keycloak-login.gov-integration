@@ -17,9 +17,9 @@ import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.JsonWebToken;
 import mil.nga.keycloak.keys.loader.LoginGovPublicKeyStorageManager;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriBuilder;
-import javax.ws.rs.core.UriInfo;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriBuilder;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.security.PublicKey;
 import org.keycloak.services.resources.IdentityBrokerService;
@@ -75,40 +75,6 @@ public class LoginGovIdentityProvider
         return uriBuilder;
     }
 
-    /**
-     * Verify the token is signed by the IDP with the JWK exposed by the wellknown
-     * endpoints.
-     * Overriden from parent because of an issue with login.gov / Keycloak
-     * interpretation of the JWK Spec 4.2.
-     * https://tools.ietf.org/html/draft-ietf-jose-json-web-key-41#section-4.2
-     *
-     * Login.gov does NOT set the "use" field, which should be set to "sig".
-     * Keycloak does not default the
-     * "use" field and therefore will not validate with JWK endpoint provided by
-     * login.gov.
-     *
-     * This implementation defaults the JWK by setting the null "use" fields to
-     * "sig"
-     * allowing validation with login.gov.
-     *
-     * @param jws - signed token
-     * @return true if validation is successful, false otherwise
-     */
-    @Override
-    protected boolean verify(JWSInput jws) {
-        if (!getConfig().isValidateSignature())
-            return true;
-
-        try {
-            PublicKey publicKey = LoginGovPublicKeyStorageManager.getIdentityProviderPublicKey(session,
-                    session.getContext().getRealm(), getConfig(), jws);
-
-            return publicKey != null && RSAProvider.verify(jws, publicKey);
-        } catch (Exception e) {
-            logger.debug("Failed to verify token", e);
-            return false;
-        }
-    }
 
     @Override
     protected BrokeredIdentityContext extractIdentity(AccessTokenResponse tokenResponse, String accessToken,
@@ -186,21 +152,8 @@ public class LoginGovIdentityProvider
              * @see https://github.com/keycloak/keycloak/blob/main/services/src/main/java/org/keycloak/broker/oidc/OIDCIdentityProvider.java#L165-L185
              */
             if (getConfig().getLogoutUrl() == null || getConfig().getLogoutUrl().trim().equals("")) return null;
-            String clientId = getConfig().getClientId();
-            String sessionId = userSession.getId();
-
-            UriBuilder logoutUri = UriBuilder.fromUri(getConfig().getLogoutUrl())
-                    .queryParam("state", sessionId);
-            if (clientId != null) logoutUri.queryParam("client_id", clientId);
-
-            String redirect = RealmsResource.brokerUrl(uriInfo)
-                    .path(IdentityBrokerService.class, "getEndpoint")
-                    .path(OIDCEndpoint.class, "logoutResponse")
-                    .build(realm.getName(), getConfig().getAlias()).toString();
-            logoutUri.queryParam("post_logout_redirect_uri", redirect);
-
-            Response response = Response.status(302).location(logoutUri.build()).build();
-            return response;
+            // Delegate to the parent class's implementation for the actual logout URL construction
+            return super.keycloakInitiatedBrowserLogout(session, userSession, uriInfo, realm);
 
         } else {
             /*
@@ -245,6 +198,15 @@ public class LoginGovIdentityProvider
             return CN;
         }
         return "";
+    }
+
+    private void fireErrorEvent(String message, Throwable throwable) {
+        // Simplified error handling - just log the error
+        if (throwable != null) {
+            logger.error(message, throwable);
+        } else {
+            logger.error(message);
+        }
     }
 
 }

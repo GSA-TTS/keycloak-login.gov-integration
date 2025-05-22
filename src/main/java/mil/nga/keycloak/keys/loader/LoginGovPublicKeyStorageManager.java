@@ -32,6 +32,7 @@ public class LoginGovPublicKeyStorageManager extends PublicKeyStorageManager {
                 && ! idpConfig.getPublicKeySignatureVerifierKeyId().trim().isEmpty();
 
         String kid = input.getHeader().getKeyId();
+        String algorithm = input.getHeader().getAlgorithm().name(); // Get algorithm from JWSInput
 
         PublicKeyStorageProvider keyStorage = session.getProvider(PublicKeyStorageProvider.class);
 
@@ -50,9 +51,9 @@ public class LoginGovPublicKeyStorageManager extends PublicKeyStorageManager {
             loader = new HardcodedPublicKeyLoader(
                     keyIdSetInConfiguration
                             ? idpConfig.getPublicKeySignatureVerifierKeyId().trim()
-                            : kid, pem);
+                            : kid, algorithm, pem); // Added algorithm
         }
 
-        return (PublicKey)keyStorage.getPublicKey(modelKey, kid, loader).getPublicKey();
+        return (PublicKey)keyStorage.getPublicKey(modelKey, algorithm, kid, loader).getPublicKey(); // Added algorithm
     }
 }

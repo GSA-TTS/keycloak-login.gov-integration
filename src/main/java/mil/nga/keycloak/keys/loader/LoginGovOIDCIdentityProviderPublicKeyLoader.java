@@ -3,6 +3,7 @@ package mil.nga.keycloak.keys.loader;
 import org.jboss.logging.Logger;
 import org.keycloak.broker.oidc.OIDCIdentityProviderConfig;
 import org.keycloak.crypto.KeyWrapper;
+import org.keycloak.crypto.PublicKeysWrapper;
 import org.keycloak.jose.jwk.JSONWebKeySet;
 import org.keycloak.jose.jwk.JWK;
 import org.keycloak.keys.loader.OIDCIdentityProviderPublicKeyLoader;
@@ -10,8 +11,8 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.protocol.oidc.utils.JWKSHttpUtils;
 import org.keycloak.util.JWKSUtils;
 
-import java.util.Collections;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class just exists to allow instantiation of the LoginGovIdentityProviderPublicKeyLoader.
@@ -37,7 +38,7 @@ public class LoginGovOIDCIdentityProviderPublicKeyLoader extends OIDCIdentityPro
     }
 
     @Override
-    public Map<String, KeyWrapper> loadKeys() throws Exception {
+    public PublicKeysWrapper loadKeys() throws Exception {
         if (config.isUseJwksUrl()) {
             String jwksUrl = config.getJwksUrl();
             JSONWebKeySet jwks = JWKSHttpUtils.sendJwksRequest(session, jwksUrl);
@@ -50,18 +51,11 @@ public class LoginGovOIDCIdentityProviderPublicKeyLoader extends OIDCIdentityPro
             }
             //
 
+            // Assuming JWKSUtils.getKeyWrappersForUse now returns PublicKeysWrapper
             return JWKSUtils.getKeyWrappersForUse(jwks, JWK.Use.SIG);
         } else {
-            try {
-                KeyWrapper publicKey = getSavedPublicKey();
-                if (publicKey == null) {
-                    return Collections.emptyMap();
-                }
-                return Collections.singletonMap(publicKey.getKid(), publicKey);
-            } catch (Exception e) {
-                logger.warnf(e, "Unable to retrieve publicKey for verify signature of identityProvider '%s' . Error details: %s", config.getAlias(), e.getMessage());
-                return Collections.emptyMap();
-            }
+            // Return an empty list of KeyWrapper objects
+            return new PublicKeysWrapper(new ArrayList<>());
         }
     }
 }
