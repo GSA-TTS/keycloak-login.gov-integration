@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>mil.nga.keycloak.social</groupId>
-    <artifactId>login_gov</artifactId>
+    <artifactId>keycloak-login.gov-integration</artifactId>
         <version>23.0.6</version>
 
     <packaging>jar</packaging>
